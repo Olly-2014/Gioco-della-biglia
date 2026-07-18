@@ -430,16 +430,38 @@ function buildLevel(){
 /* ---------- Input: giroscopio ---------- */
 let tiltX=0, tiltZ=0, beta0=0, gamma0=0;
 let sensorOn=false, lastBeta=0, lastGamma=0;
+
+/* angolo dello schermo: 0 = verticale, 90/-90 = orizzontale, 180 = capovolto */
+function screenAngle(){
+  if(screen.orientation && typeof screen.orientation.angle==="number")
+    return screen.orientation.angle;
+  return (typeof window.orientation==="number") ? window.orientation : 0;
+}
+
 function onOrient(e){
   if(e.beta==null||e.gamma==null) return;
   sensorOn=true;
   lastBeta=e.beta; lastGamma=e.gamma;
+  /* inclinazioni calibrate nel sistema del DISPOSITIVO */
   const b=(e.beta-beta0)*Math.PI/180;
   const g=(e.gamma-gamma0)*Math.PI/180;
-  tiltZ=THREE.MathUtils.clamp(b,-MAX_TILT,MAX_TILT);
-  tiltX=THREE.MathUtils.clamp(g,-MAX_TILT,MAX_TILT);
+  /* rimappo sugli assi dello SCHERMO in base a come è ruotato il telefono */
+  let sx, sz;
+  switch(((screenAngle()%360)+360)%360){
+    case 90:  sx=b;  sz=-g; break;   // orizzontale (ruotato a sinistra)
+    case 270: sx=-b; sz=g;  break;   // orizzontale (ruotato a destra)
+    case 180: sx=-g; sz=-b; break;   // capovolto
+    default:  sx=g;  sz=b;           // verticale
+  }
+  tiltX=THREE.MathUtils.clamp(sx,-MAX_TILT,MAX_TILT);
+  tiltZ=THREE.MathUtils.clamp(sz,-MAX_TILT,MAX_TILT);
 }
 function calibrate(){ beta0=lastBeta; gamma0=lastGamma; }
+
+/* se ruoti il telefono durante il gioco, ricalibro da solo sulla nuova presa */
+addEventListener("orientationchange",()=>{ setTimeout(calibrate,400); });
+if(screen.orientation && screen.orientation.addEventListener)
+  screen.orientation.addEventListener("change",()=>{ setTimeout(calibrate,400); });
 async function enableSensors(){
   try{
     if(typeof DeviceOrientationEvent!=="undefined" &&
