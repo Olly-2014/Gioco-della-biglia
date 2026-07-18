@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Labirinto — inclina e gioca</title>
+<title>TILT — inclina e gioca</title>
 <style>
-  :root{ --brass:#6ec3f0; --cream:#dcebf7; }
+  :root{ --acc:#6ec3f0; --cream:#dcebf7; }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;touch-action:none}
   body{
@@ -23,71 +23,163 @@
     background:rgba(7,13,22,.7);border:1px solid rgba(110,195,240,.4);border-radius:999px;
     padding:6px 14px;font-size:.85rem;letter-spacing:.06em;backdrop-filter:blur(4px);
   }
-  .hud .pill b{color:var(--brass);font-weight:normal}
+  .hud .pill b{color:var(--acc);font-weight:normal}
   .btn-zero{
     pointer-events:auto;background:rgba(7,13,22,.7);border:1px solid rgba(110,195,240,.4);
-    color:var(--brass);border-radius:999px;padding:6px 14px;font-family:inherit;font-size:.8rem;
+    color:var(--acc);border-radius:999px;padding:6px 14px;font-family:inherit;font-size:.8rem;
     cursor:pointer;backdrop-filter:blur(4px);
   }
   .btn-zero:active{transform:scale(.96)}
   .overlay{
     position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
-    background:rgba(4,8,14,.82);backdrop-filter:blur(3px);padding:22px;text-align:center;
+    background:rgba(4,8,14,.85);backdrop-filter:blur(3px);padding:20px;text-align:center;
+    overflow-y:auto;
   }
   .overlay.hidden{display:none}
-  .card{max-width:420px}
-  .card h1{font-size:2rem;color:var(--brass);letter-spacing:.03em;margin-bottom:6px}
-  .card .sub{font-style:italic;color:#8fa9c2;margin-bottom:22px;font-size:.95rem}
-  .card p{font-size:.92rem;line-height:1.6;color:var(--cream);margin-bottom:18px}
+  .card{max-width:440px;width:100%;padding:10px 0}
+  .card h1{font-size:2.1rem;color:var(--acc);letter-spacing:.08em;margin-bottom:2px}
+  .card .sub{font-style:italic;color:#8fa9c2;margin-bottom:20px;font-size:.92rem}
+  .sec-label{
+    font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);
+    margin:18px 0 10px;display:flex;align-items:center;gap:10px;
+  }
+  .sec-label::before,.sec-label::after{content:"";flex:1;height:1px;background:rgba(110,195,240,.25)}
+  .maps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .map{
+    border:1px solid rgba(110,195,240,.3);border-radius:12px;padding:12px 8px;
+    background:rgba(10,18,30,.6);cursor:pointer;color:var(--cream);font-family:inherit;
+    transition:border-color .2s;
+  }
+  .map .m-dot{width:26px;height:26px;border-radius:50%;margin:0 auto 8px;border:2px solid rgba(255,255,255,.25)}
+  .map .m-name{font-size:.95rem}
+  .map .m-rounds{font-size:.72rem;color:#8fa9c2;margin-top:2px}
+  .map .m-diff{font-size:.68rem;letter-spacing:.1em;margin-top:4px;color:var(--acc)}
+  .map[aria-pressed="true"]{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+  .map:focus-visible,.ball-swatch:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .balls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+  .ball-swatch{
+    width:46px;height:46px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.2);
+    position:relative;transition:transform .15s;
+  }
+  .ball-swatch::after{
+    content:"";position:absolute;top:7px;left:10px;width:12px;height:8px;border-radius:50%;
+    background:rgba(255,255,255,.55);filter:blur(1px);transform:rotate(-20deg);
+  }
+  .ball-swatch[aria-pressed="true"]{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc);transform:scale(1.1)}
+  .ball-name{font-size:.78rem;color:#8fa9c2;margin-top:8px;min-height:1em}
   .big-btn{
-    background:var(--brass);color:#06131e;border:none;border-radius:12px;
+    background:var(--acc);color:#06131e;border:none;border-radius:12px;
     font-family:inherit;font-size:1.15rem;padding:14px 30px;cursor:pointer;letter-spacing:.03em;
+    margin-top:20px;
   }
   .big-btn:active{transform:scale(.97)}
-  .small-note{margin-top:14px;font-size:.78rem;color:#5f7a94;font-style:italic}
-  .win-time{font-size:2.6rem;color:var(--brass);margin:10px 0 4px}
+  .small-note{margin-top:12px;font-size:.76rem;color:#5f7a94;font-style:italic}
+  .win-time{font-size:2.6rem;color:var(--acc);margin:10px 0 4px}
   .hidden{display:none}
+  .menu-link{
+    background:none;border:none;color:#8fa9c2;font-family:inherit;font-size:.82rem;
+    cursor:pointer;text-decoration:underline;text-underline-offset:3px;margin-top:14px;
+  }
 </style>
 </head>
 <body>
 <div id="scene"></div>
 
 <div class="hud">
-  <span class="pill">Livello <b id="hudLevel">1</b></span>
+  <span class="pill">Round <b id="hudLevel">1</b>/<b id="hudTot">5</b></span>
   <span class="pill"><b id="hudTime">0.0</b> s</span>
   <button class="btn-zero" id="zeroBtn" title="Ricalibra la posizione neutra">&#8982; Calibra</button>
 </div>
 
+<!-- MENU -->
 <div class="overlay" id="startOverlay">
   <div class="card">
-    <h1>Labirinto</h1>
-    <div class="sub">il gioco della biglia, nel tuo telefono</div>
-    <p><strong>Inclina il telefono</strong> per far rotolare la biglia fino all'anello dorato.
-    Tienilo come ti &egrave; comodo e premi Gioca: quella diventer&agrave; la posizione "piatta".</p>
+    <h1>TILT</h1>
+    <div class="sub">inclina il telefono, porta la biglia all'anello</div>
+
+    <div class="sec-label">Mappa</div>
+    <div class="maps" id="maps"></div>
+
+    <div class="sec-label">La tua biglia</div>
+    <div class="balls" id="balls"></div>
+    <div class="ball-name" id="ballName"></div>
+
     <button class="big-btn" id="startBtn">Gioca</button>
-    <div class="small-note">Su computer o senza sensori: trascina col dito/mouse o usa le frecce.</div>
+    <div class="small-note">Tieni il telefono comodo e premi Gioca: quella sar&agrave; la posizione "piatta".<br>Su computer: trascina o usa le frecce. Attento alle buche nelle mappe difficili!</div>
   </div>
 </div>
 
+<!-- ROUND COMPLETATO -->
 <div class="overlay hidden" id="winOverlay">
   <div class="card">
-    <h1>Livello completato</h1>
+    <h1>Round completato</h1>
     <div class="win-time" id="winTime"></div>
     <div class="sub" id="winBest"></div>
-    <button class="big-btn" id="nextBtn">Livello successivo</button>
+    <button class="big-btn" id="nextBtn">Round successivo</button>
+  </div>
+</div>
+
+<!-- MAPPA COMPLETATA -->
+<div class="overlay hidden" id="finalOverlay">
+  <div class="card">
+    <h1 id="finalTitle">Mappa completata!</h1>
+    <div class="win-time" id="finalTime"></div>
+    <div class="sub" id="finalSub"></div>
+    <button class="big-btn" id="againBtn">Rigioca la mappa</button><br>
+    <button class="menu-link" id="menuBtn">Torna al menu</button>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =====================================================
-   LABIRINTO A GIROSCOPIO — esperimento sensori
+   TILT — labirinto a giroscopio
+   Mappe con round e difficoltà diverse, biglia custom
    ===================================================== */
 const CELL=2, WALL_T=0.28, WALL_H=0.9, BALL_R=0.42;
 const GRAV=22, FRICTION=0.985, BOUNCE=0.35;
 const MAX_TILT=28*Math.PI/180, VISUAL_TILT=0.10;
+const HOLE_R=0.5, FALL_R=0.36;
 
-let level=1, bestTimes={};
+/* ---------- Mappe ---------- */
+const MAPS={
+  laguna:{
+    name:"Laguna", rounds:5, base:4, diff:"Facile", dot:"#3a6390",
+    floorA:["#2e4f74","#1b3049"], floorB:["#3a6390","#22405e"], wallC:["#122338","#0a1522"],
+    goal:0x5ad0f0, goalEm:0x0e4a6b, amb:0xc9ddff, sun:0xcfe4ff,
+    spark:0x8ad9ff, glow:0x78c8ff, fog:0x060b14,
+    bg:["#152a42","#0c1a2b","#040910"], body:["#10203a","#060b14"],
+    env:["#d8ecff","#2c4d6e","#050b12"], holes:0
+  },
+  foresta:{
+    name:"Foresta", rounds:8, base:5, diff:"Media", dot:"#3f6b3a",
+    floorA:["#3d5c33","#26391e"], floorB:["#4c7040","#2e4526"], wallC:["#1a2c14","#0d160a"],
+    goal:0xa8e05a, goalEm:0x2e4a0e, amb:0xd6e8c9, sun:0xe8f2cf,
+    spark:0xc3f08a, glow:0x9ade6a, fog:0x08110a,
+    bg:["#1c2e16","#111d0d","#060b05"], body:["#1c3018","#08110a"],
+    env:["#eaf7d8","#3c5c2c","#08110a"], holes:1
+  },
+  vulcano:{
+    name:"Vulcano", rounds:12, base:5, diff:"Difficile", dot:"#8a3520",
+    floorA:["#5c3028","#3a1c16"], floorB:["#703a2c","#45231a"], wallC:["#2a130d","#160a06"],
+    goal:0xff8c3a, goalEm:0x6b2a0e, amb:0xffd9c4, sun:0xffcfa8,
+    spark:0xffb37a, glow:0xff9a5a, fog:0x140806,
+    bg:["#38160e","#22100a","#0e0504"], body:["#3a1810","#140806"],
+    env:["#ffd9b8","#6e3220","#140806"], holes:2
+  }
+};
+
+/* ---------- Biglie ---------- */
+const BALLS={
+  acciaio:{name:"Acciaio", css:"radial-gradient(circle at 35% 30%, #ffffff, #b8b8c4 45%, #6a6a78)", color:0xe8e8ee, rough:.12, metal:1, em:0x000000, emI:0},
+  oro:{name:"Oro", css:"radial-gradient(circle at 35% 30%, #fff3c4, #f0c24a 45%, #8a6510)", color:0xffd76a, rough:.15, metal:1, em:0x000000, emI:0},
+  rubino:{name:"Rubino", css:"radial-gradient(circle at 35% 30%, #ff9aa8, #d02040 45%, #5a0a18)", color:0xe0304a, rough:.05, metal:.4, em:0x30060c, emI:.25},
+  smeraldo:{name:"Smeraldo", css:"radial-gradient(circle at 35% 30%, #a8ffd0, #20b060 45%, #084a28)", color:0x2ade8a, rough:.05, metal:.4, em:0x06301c, emI:.25},
+  neon:{name:"Neon", css:"radial-gradient(circle at 35% 30%, #d8faff, #40d0f0 45%, #0a5a70)", color:0x40e0ff, rough:.3, metal:.2, em:0x30c8f0, emI:.8}
+};
+
+let mapKey="laguna", ballKey="acciaio";
+let level=1, bestTimes={}, totalTime=0;
 
 /* ---------- Three.js base ---------- */
 const container=document.getElementById("scene");
@@ -105,7 +197,8 @@ const sceneT=new THREE.Scene();
 sceneT.fog=new THREE.Fog(0x060b14,22,60);
 const camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,0.1,120);
 
-sceneT.add(new THREE.AmbientLight(0xc9ddff,0.5));
+const ambient=new THREE.AmbientLight(0xc9ddff,0.5);
+sceneT.add(ambient);
 const lamp=new THREE.DirectionalLight(0xcfe4ff,1.1);
 lamp.position.set(6,16,4); lamp.castShadow=true;
 lamp.shadow.mapSize.set(1024,1024);
@@ -114,26 +207,26 @@ sceneT.add(lamp);
 const board=new THREE.Group();
 sceneT.add(board);
 
-/* tavolo di sfondo con vignettatura calda */
-(function(){
+/* tavolo di sfondo */
+let tablePlane=null;
+function buildTable(cols3){
+  if(tablePlane){sceneT.remove(tablePlane);}
   const c=document.createElement("canvas");c.width=256;c.height=256;
   const ctx=c.getContext("2d");
   const g=ctx.createRadialGradient(128,128,20,128,128,128);
-  g.addColorStop(0,"#152a42");g.addColorStop(.6,"#0c1a2b");g.addColorStop(1,"#040910");
+  g.addColorStop(0,cols3[0]);g.addColorStop(.6,cols3[1]);g.addColorStop(1,cols3[2]);
   ctx.fillStyle=g;ctx.fillRect(0,0,256,256);
-  const tx=new THREE.CanvasTexture(c);
-  const plane=new THREE.Mesh(new THREE.PlaneGeometry(90,90),
-    new THREE.MeshBasicMaterial({map:tx}));
-  plane.rotation.x=-Math.PI/2;plane.position.y=-0.6;
-  sceneT.add(plane);
-})();
+  tablePlane=new THREE.Mesh(new THREE.PlaneGeometry(90,90),
+    new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));
+  tablePlane.rotation.x=-Math.PI/2;tablePlane.position.y=-0.6;
+  sceneT.add(tablePlane);
+}
 
 /* ---------- Texture procedurali ---------- */
 function woodTexture(base,streak,knots){
   const w=256,h=256,c=document.createElement("canvas");c.width=w;c.height=h;
   const ctx=c.getContext("2d");
   ctx.fillStyle=base;ctx.fillRect(0,0,w,h);
-  /* venature */
   for(let i=0;i<46;i++){
     ctx.strokeStyle=streak; ctx.globalAlpha=0.06+Math.random()*0.12;
     ctx.lineWidth=0.8+Math.random()*3;
@@ -143,7 +236,6 @@ function woodTexture(base,streak,knots){
     ctx.bezierCurveTo(w*.3,y+(Math.random()*22-11),w*.6,y+(Math.random()*22-11),w,y+(Math.random()*16-8));
     ctx.stroke();
   }
-  /* nodi del legno */
   if(knots)for(let i=0;i<3;i++){
     const x=Math.random()*w,y=Math.random()*h;
     for(let r=9;r>1;r-=2){
@@ -156,41 +248,53 @@ function woodTexture(base,streak,knots){
   tx.wrapS=tx.wrapT=THREE.RepeatWrapping;
   return tx;
 }
-/* finto ambiente riflesso per la biglia metallica */
-function makeEnvMap(){
+function makeEnvMap(top,mid,bot){
   const faces=[];
   for(let i=0;i<6;i++){
     const c=document.createElement("canvas");c.width=64;c.height=64;
     const ctx=c.getContext("2d");
     const g=ctx.createLinearGradient(0,0,0,64);
-    g.addColorStop(0,"#d8ecff");g.addColorStop(.45,"#2c4d6e");g.addColorStop(1,"#050b12");
+    g.addColorStop(0,top);g.addColorStop(.45,mid);g.addColorStop(1,bot);
     ctx.fillStyle=g;ctx.fillRect(0,0,64,64);
-    if(i===2){ /* faccia superiore più chiara: la "lampada" */
-      ctx.fillStyle="rgba(220,240,255,.9)";
+    if(i===2){
+      ctx.fillStyle="rgba(240,248,255,.9)";
       ctx.beginPath();ctx.arc(32,32,18,0,Math.PI*2);ctx.fill();
     }
     faces.push(c);
   }
   const t=new THREE.CubeTexture(faces);t.needsUpdate=true;return t;
 }
-const envMap=makeEnvMap();
 
-/* ---------- Materiali ---------- */
-const matFloor=new THREE.MeshStandardMaterial({map:woodTexture("#2e4f74","#1b3049",true),roughness:.8});
-const matFloor2=new THREE.MeshStandardMaterial({map:woodTexture("#3a6390","#22405e",true),roughness:.8});
-const matWall=new THREE.MeshStandardMaterial({map:woodTexture("#122338","#0a1522",false),roughness:.72});
-const matBall=new THREE.MeshStandardMaterial({color:0xe8e8ee,roughness:.12,metalness:1,envMap:envMap});
-const matGoal=new THREE.MeshStandardMaterial({color:0x5ad0f0,roughness:.25,metalness:.85,envMap:envMap,emissive:0x0e4a6b,emissiveIntensity:.6});
+/* materiali correnti (ricostruiti a ogni mappa) */
+let matFloor,matFloor2,matWall,matBall,matGoal,matHole,envMap;
+function buildMaterials(){
+  const M=MAPS[mapKey], B=BALLS[ballKey];
+  envMap=makeEnvMap(M.env[0],M.env[1],M.env[2]);
+  matFloor =new THREE.MeshStandardMaterial({map:woodTexture(M.floorA[0],M.floorA[1],true),roughness:.8});
+  matFloor2=new THREE.MeshStandardMaterial({map:woodTexture(M.floorB[0],M.floorB[1],true),roughness:.8});
+  matWall  =new THREE.MeshStandardMaterial({map:woodTexture(M.wallC[0],M.wallC[1],false),roughness:.72});
+  matBall  =new THREE.MeshStandardMaterial({color:B.color,roughness:B.rough,metalness:B.metal,
+             envMap:envMap,emissive:B.em,emissiveIntensity:B.emI});
+  matGoal  =new THREE.MeshStandardMaterial({color:M.goal,roughness:.25,metalness:.85,
+             envMap:envMap,emissive:M.goalEm,emissiveIntensity:.6});
+  matHole  =new THREE.MeshBasicMaterial({color:0x000000});
+  ambient.color.set(M.amb);
+  lamp.color.set(M.sun);
+  sceneT.fog.color.set(M.fog);
+  buildTable(M.bg);
+  document.body.style.background=
+    "radial-gradient(ellipse at 50% 30%, "+M.body[0]+" 0%, "+M.body[1]+" 70%)";
+}
 
 /* ---------- Stato di gioco ---------- */
-let walls=[];          // AABB {minX,maxX,minZ,maxZ}
-let ball=null, goalMesh=null, goalPos={x:0,z:0};
+let walls=[], holes=[];
+let ball=null, goalMesh=null, goalPos={x:0,z:0}, startPos={x:0,z:0};
 let sparks=null, sparkSeed=[], ballLight=null;
 let vx=0, vz=0, bx=0, bz=0;
 let playing=false, tStart=0, elapsed=0;
 let cols=0, rows=0;
 
-/* ---------- Generazione labirinto (recursive backtracker) ---------- */
+/* ---------- Labirinto (recursive backtracker) ---------- */
 function genMaze(c,r){
   const cells=[];
   for(let i=0;i<c*r;i++) cells.push({n:true,s:true,e:true,w:true,vis:false});
@@ -220,12 +324,10 @@ function genMaze(c,r){
 /* ---------- Costruzione livello ---------- */
 function clearBoard(){
   while(board.children.length) board.remove(board.children[0]);
-  walls=[];
+  walls=[]; holes=[];
 }
-
 function addWall(cx,cz,lenX,lenZ){
-  const g=new THREE.BoxGeometry(lenX,WALL_H,lenZ);
-  const m=new THREE.Mesh(g,matWall);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(lenX,WALL_H,lenZ),matWall);
   m.position.set(cx,WALL_H/2,cz);
   m.castShadow=true; m.receiveShadow=true;
   board.add(m);
@@ -234,11 +336,12 @@ function addWall(cx,cz,lenX,lenZ){
 
 function buildLevel(){
   clearBoard();
-  cols=4+level; rows=5+level;              // cresce col livello
+  const M=MAPS[mapKey];
+  cols=M.base+Math.floor((level-1)*0.8);
+  rows=M.base+1+Math.floor((level-1)*0.8);
   const W=cols*CELL, H=rows*CELL;
-  const ox=-W/2, oz=-H/2;                  // origine angolo
+  const ox=-W/2, oz=-H/2;
 
-  /* pavimento a scacchiera */
   for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
     const f=new THREE.Mesh(new THREE.BoxGeometry(CELL,0.3,CELL),(x+y)%2?matFloor:matFloor2);
     f.position.set(ox+x*CELL+CELL/2,-0.15,oz+y*CELL+CELL/2);
@@ -246,13 +349,11 @@ function buildLevel(){
     board.add(f);
   }
 
-  /* cornice esterna */
   addWall(0,oz-WALL_T/2,W+WALL_T*2,WALL_T);
   addWall(0,-oz+WALL_T/2,W+WALL_T*2,WALL_T);
   addWall(ox-WALL_T/2,0,WALL_T,H+WALL_T*2);
   addWall(-ox+WALL_T/2,0,WALL_T,H+WALL_T*2);
 
-  /* muri interni dal labirinto */
   const cells=genMaze(cols,rows);
   const idx=(x,y)=>y*cols+x;
   for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
@@ -262,21 +363,38 @@ function buildLevel(){
     if(c.e && x<cols-1) addWall(cx+CELL,   cz+CELL/2, WALL_T, CELL+WALL_T);
   }
 
-  /* biglia: parte in alto a sinistra */
-  bx=ox+CELL/2; bz=oz+CELL/2; vx=0; vz=0;
+  /* buche (se la mappa le prevede) */
+  const nHoles=M.holes ? M.holes+Math.floor((level-1)/2) : 0;
+  const taken=new Set(["0,0",(cols-1)+","+(rows-1),"1,0","0,1"]);
+  let tries=0;
+  while(holes.length<nHoles && tries<200){
+    tries++;
+    const hx=Math.floor(Math.random()*cols), hy=Math.floor(Math.random()*rows);
+    if(taken.has(hx+","+hy)) continue;
+    taken.add(hx+","+hy);
+    const wx=ox+hx*CELL+CELL/2, wz=oz+hy*CELL+CELL/2;
+    const disc=new THREE.Mesh(new THREE.CylinderGeometry(HOLE_R,HOLE_R,0.05,28),matHole);
+    disc.position.set(wx,0.03,wz);
+    board.add(disc);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(HOLE_R,0.045,10,28),matWall);
+    rim.rotation.x=Math.PI/2; rim.position.set(wx,0.05,wz);
+    board.add(rim);
+    holes.push({x:wx,z:wz});
+  }
+
+  startPos={x:ox+CELL/2,z:oz+CELL/2};
+  bx=startPos.x; bz=startPos.z; vx=0; vz=0;
   ball=new THREE.Mesh(new THREE.SphereGeometry(BALL_R,32,24),matBall);
   ball.castShadow=true;
   ball.position.set(bx,BALL_R,bz);
   board.add(ball);
 
-  /* meta: anello dorato in basso a destra */
   goalPos={x:-ox-CELL/2, z:-oz-CELL/2};
   goalMesh=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.12,16,40),matGoal);
   goalMesh.rotation.x=Math.PI/2;
   goalMesh.position.set(goalPos.x,0.08,goalPos.z);
   board.add(goalMesh);
 
-  /* scintille dorate che salgono dalla meta */
   const N=40, pos=new Float32Array(N*3);
   sparkSeed=[];
   for(let i=0;i<N;i++){
@@ -289,58 +407,52 @@ function buildLevel(){
   const sg=new THREE.BufferGeometry();
   sg.setAttribute("position",new THREE.BufferAttribute(pos,3));
   sparks=new THREE.Points(sg,new THREE.PointsMaterial({
-    color:0x8ad9ff,size:0.09,transparent:true,opacity:.9,sizeAttenuation:true
+    color:M.spark,size:0.09,transparent:true,opacity:.9,sizeAttenuation:true
   }));
   board.add(sparks);
 
-  /* piccola luce calda che accompagna la biglia */
-  ballLight=new THREE.PointLight(0x78c8ff,0.7,6);
+  ballLight=new THREE.PointLight(M.glow,0.7,6);
   ballLight.position.set(bx,1.4,bz);
   board.add(ballLight);
-  /* faro fisso sulla meta */
-  const goalLight=new THREE.PointLight(0x53c3ff,0.8,5);
+  const goalLight=new THREE.PointLight(M.goal,0.8,5);
   goalLight.position.set(goalPos.x,1.6,goalPos.z);
   board.add(goalLight);
 
-  /* camera adattata alla dimensione */
   const d=Math.max(W,H);
   camera.position.set(0,d*1.15,d*0.55);
   camera.lookAt(0,0,0);
 
   document.getElementById("hudLevel").textContent=level;
+  document.getElementById("hudTot").textContent=M.rounds;
   elapsed=0; tStart=performance.now();
 }
 
 /* ---------- Input: giroscopio ---------- */
-let tiltX=0, tiltZ=0;          // inclinazione corrente (rad, già calibrata)
-let beta0=0, gamma0=0;         // calibrazione
+let tiltX=0, tiltZ=0, beta0=0, gamma0=0;
 let sensorOn=false, lastBeta=0, lastGamma=0;
-
 function onOrient(e){
   if(e.beta==null||e.gamma==null) return;
   sensorOn=true;
   lastBeta=e.beta; lastGamma=e.gamma;
-  let b=(e.beta-beta0)*Math.PI/180;
-  let g=(e.gamma-gamma0)*Math.PI/180;
+  const b=(e.beta-beta0)*Math.PI/180;
+  const g=(e.gamma-gamma0)*Math.PI/180;
   tiltZ=THREE.MathUtils.clamp(b,-MAX_TILT,MAX_TILT);
   tiltX=THREE.MathUtils.clamp(g,-MAX_TILT,MAX_TILT);
 }
-
 function calibrate(){ beta0=lastBeta; gamma0=lastGamma; }
-
 async function enableSensors(){
   try{
     if(typeof DeviceOrientationEvent!=="undefined" &&
        typeof DeviceOrientationEvent.requestPermission==="function"){
-      const p=await DeviceOrientationEvent.requestPermission();  // iOS
+      const p=await DeviceOrientationEvent.requestPermission();
       if(p!=="granted") return;
     }
     window.addEventListener("deviceorientation",onOrient);
-    setTimeout(calibrate,300);   // calibra sulla posizione di partenza
+    setTimeout(calibrate,300);
   }catch(err){ console.warn("sensori:",err); }
 }
 
-/* ---------- Input di riserva: drag + frecce ---------- */
+/* ---------- Input di riserva ---------- */
 let dragging=false, dragSX=0, dragSY=0;
 addEventListener("pointerdown",e=>{
   if(e.target.closest(".overlay,.btn-zero")) return;
@@ -373,7 +485,9 @@ function collide(){
     }
   }
 }
-
+function fallInHole(){
+  bx=startPos.x; bz=startPos.z; vx=0; vz=0;
+}
 function step(dt){
   if(!sensorOn){
     if(keys["ArrowLeft"])  tiltX=-MAX_TILT*0.6;
@@ -389,16 +503,18 @@ function step(dt){
   bx+=vx*dt; bz+=vz*dt;
   collide();
 
+  for(const h of holes){
+    const dx=bx-h.x, dz=bz-h.z;
+    if(dx*dx+dz*dz<FALL_R*FALL_R){ fallInHole(); break; }
+  }
+
   ball.position.set(bx,BALL_R,bz);
-  /* la biglia "rotola" */
   ball.rotation.z-=vx*dt/BALL_R;
   ball.rotation.x+=vz*dt/BALL_R;
 
-  /* inclinazione visiva del tavolo */
-  board.rotation.x+= (tiltZ*VISUAL_TILT-board.rotation.x)*0.15;
-  board.rotation.z+= (-tiltX*VISUAL_TILT-board.rotation.z)*0.15;
+  board.rotation.x+=(tiltZ*VISUAL_TILT-board.rotation.x)*0.15;
+  board.rotation.z+=(-tiltX*VISUAL_TILT-board.rotation.z)*0.15;
 
-  /* meta raggiunta? */
   const gx=bx-goalPos.x, gz=bz-goalPos.z;
   if(gx*gx+gz*gz<0.45*0.45) win();
 }
@@ -406,14 +522,26 @@ function step(dt){
 /* ---------- Vittoria ---------- */
 function win(){
   playing=false;
+  const M=MAPS[mapKey];
   const t=elapsed;
-  const best=bestTimes[level];
+  totalTime+=t;
+  const key=mapKey+"-"+level;
+  const best=bestTimes[key];
   const isRecord=!best||t<best;
-  if(isRecord) bestTimes[level]=t;
-  document.getElementById("winTime").textContent=t.toFixed(1)+" s";
-  document.getElementById("winBest").textContent=
-    isRecord ? "Nuovo record del livello!" : "Record: "+bestTimes[level].toFixed(1)+" s";
-  document.getElementById("winOverlay").classList.remove("hidden");
+  if(isRecord) bestTimes[key]=t;
+
+  if(level>=M.rounds){
+    document.getElementById("finalTitle").textContent=M.name+" completata!";
+    document.getElementById("finalTime").textContent=totalTime.toFixed(1)+" s";
+    document.getElementById("finalSub").textContent=
+      M.rounds+" round superati — tempo totale";
+    document.getElementById("finalOverlay").classList.remove("hidden");
+  }else{
+    document.getElementById("winTime").textContent=t.toFixed(1)+" s";
+    document.getElementById("winBest").textContent=
+      isRecord ? "Nuovo record del round!" : "Record: "+bestTimes[key].toFixed(1)+" s";
+    document.getElementById("winOverlay").classList.remove("hidden");
+  }
 }
 
 /* ---------- Loop ---------- */
@@ -425,7 +553,7 @@ function loop(now){
   if(goalMesh){
     goalMesh.rotation.z+=dt*1.2;
     goalMesh.position.y=0.08+Math.sin(now/400)*0.04;
-    matGoal.emissiveIntensity=0.55+Math.sin(now/280)*0.35;
+    if(matGoal) matGoal.emissiveIntensity=0.55+Math.sin(now/280)*0.35;
   }
   if(sparks){
     const p=sparks.geometry.attributes.position;
@@ -445,18 +573,70 @@ function loop(now){
   renderer.render(sceneT,camera);
 }
 
-/* ---------- UI ---------- */
-document.getElementById("startBtn").addEventListener("click",async()=>{
-  await enableSensors();               // deve avvenire nel gesto utente (iOS)
-  document.getElementById("startOverlay").classList.add("hidden");
+/* ---------- Menu ---------- */
+function buildMenu(){
+  const mBox=document.getElementById("maps");
+  Object.keys(MAPS).forEach(k=>{
+    const M=MAPS[k];
+    const b=document.createElement("button");
+    b.className="map";
+    b.setAttribute("aria-pressed", k===mapKey ? "true":"false");
+    b.innerHTML='<div class="m-dot" style="background:'+M.dot+'"></div>'+
+      '<div class="m-name">'+M.name+'</div>'+
+      '<div class="m-rounds">'+M.rounds+' round</div>'+
+      '<div class="m-diff">'+M.diff+'</div>';
+    b.addEventListener("click",()=>{
+      mapKey=k;
+      mBox.querySelectorAll(".map").forEach(x=>x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+    });
+    mBox.appendChild(b);
+  });
+  const bBox=document.getElementById("balls");
+  Object.keys(BALLS).forEach(k=>{
+    const B=BALLS[k];
+    const b=document.createElement("button");
+    b.className="ball-swatch";
+    b.style.background=B.css;
+    b.setAttribute("aria-label",B.name);
+    b.setAttribute("aria-pressed", k===ballKey ? "true":"false");
+    b.addEventListener("click",()=>{
+      ballKey=k;
+      document.getElementById("ballName").textContent=B.name;
+      bBox.querySelectorAll(".ball-swatch").forEach(x=>x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+    });
+    bBox.appendChild(b);
+  });
+  document.getElementById("ballName").textContent=BALLS[ballKey].name;
+}
+buildMenu();
+
+function startGame(){
+  level=1; totalTime=0;
+  buildMaterials();
   buildLevel();
   playing=true;
+}
+document.getElementById("startBtn").addEventListener("click",async()=>{
+  await enableSensors();
+  document.getElementById("startOverlay").classList.add("hidden");
+  startGame();
 });
 document.getElementById("nextBtn").addEventListener("click",()=>{
   level++;
   document.getElementById("winOverlay").classList.add("hidden");
   buildLevel();
   playing=true;
+});
+document.getElementById("againBtn").addEventListener("click",()=>{
+  document.getElementById("finalOverlay").classList.add("hidden");
+  startGame();
+});
+document.getElementById("menuBtn").addEventListener("click",()=>{
+  document.getElementById("finalOverlay").classList.add("hidden");
+  document.getElementById("startOverlay").classList.remove("hidden");
+  playing=false;
 });
 document.getElementById("zeroBtn").addEventListener("click",calibrate);
 
@@ -466,7 +646,9 @@ addEventListener("resize",()=>{
   renderer.setSize(innerWidth,innerHeight);
 });
 
-buildLevel();      // scena visibile dietro l'overlay iniziale
+/* scena di sfondo dietro il menu */
+buildMaterials();
+buildLevel();
 requestAnimationFrame(loop);
 </script>
 </body>
